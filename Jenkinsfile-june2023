@@ -1,0 +1,28 @@
+node{
+  def mavenHome = tool name: 'maven3.9.2'   
+  stage('1.CodeClone'){
+      git "https://github.com/SleekDevOps/maven-web-application"
+  }
+  stage('2.MavenBuild'){
+      sh "${mavenHome}/bin/mvn clean package"
+  }
+  stage('3.CodeQualityAnalysis'){
+      sh "${mavenHome}/bin/mvn sonar:sonar"
+  }
+  stage('4.Upload2Nexus'){
+      sh "${mavenHome}/bin/mvn deploy"
+  }
+  stage('5.Deploy2UAT'){
+      deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://13.53.50.0:8177/')], contextPath: null, war: 'target/*war'
+  }
+  stage('6.ManualApproval'){
+      sh "echo 'ready for review' "
+      timeout(time:5, unit:'HOURS') {
+          input message: 'Application ready for deployment, Please review and approve'
+        }
+  }
+  stage('7.Deploy2Prod'){}
+  stage('8.Notification'){
+      emailext body: 'Build Status was successfully', recipientProviders: [developers(), buildUser()], subject: 'Build Status', to: 'ayfadipe@gmail.com'
+  }
+}
